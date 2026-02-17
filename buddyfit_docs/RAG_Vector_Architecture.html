@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>BuddyFit RAG & Vector Architecture</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Pretendard', -apple-system, 'Noto Sans KR', sans-serif;
+       background:#f8f9fa; padding:30px; color:#1a1a1a; }
+.page { max-width:1200px; margin:0 auto; background:#fff;
+        border-radius:16px; padding:40px;
+        box-shadow:0 6px 28px rgba(0,0,0,0.08); }
+
+h1 { font-size:28px; font-weight:800; margin-bottom:8px; }
+.subtitle { font-size:14px; color:#666; margin-bottom:28px; line-height:1.6; }
+
+.section { margin-top:30px; }
+.section-title { font-size:20px; font-weight:800; margin-bottom:12px;
+                 border-bottom:2px solid #e5e5e5; padding-bottom:6px; }
+
+.callout {
+  background:#fafafa;
+  border-left:4px solid #333;
+  padding:14px 16px;
+  border-radius:8px;
+  font-size:13px;
+  line-height:1.7;
+  margin-bottom:16px;
+}
+
+.grid { display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+        gap:14px; font-size:13px; }
+
+.card { border:1px solid #eee;
+        border-radius:12px;
+        padding:14px;
+        background:#fff; }
+
+.card h3 { font-size:15px; margin-bottom:6px; }
+
+.table { width:100%; border-collapse:collapse; font-size:13px; margin-top:12px; }
+.table th, .table td { border:1px solid #eee; padding:10px; vertical-align:top; }
+.table th { background:#fafafa; text-align:left; font-size:12px; }
+
+.highlight { background:#fff3d4; padding:2px 6px; border-radius:4px; font-weight:600; }
+.badge { font-size:11px; background:#f2f2f2; padding:2px 8px; border-radius:999px; display:inline-block; margin-bottom:6px; }
+
+</style>
+  <link rel="stylesheet" href="site.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html">← Home</a>
+</nav>
+
+<div class="page">
+
+<h1>BuddyFit RAG & Vector Architecture</h1>
+<p class="subtitle">
+우리의 RAG는 “지식 검색”이 아니라,
+<b>지금 이 상황에서 완수 가능한 운동만 남기기 위한 다단계 필터링 시스템</b>이다.
+</p>
+
+<!-- 1 설계 철학 -->
+<div class="section">
+<div class="section-title">1. 설계 철학: 왜 카드 기반 RAG인가?</div>
+
+<div class="callout">
+운동 추천은 일반 텍스트 생성 문제가 아니다.<br>
+우리는 “실행 가능한 행동 단위”를 반환해야 한다.<br><br>
+
+그래서:
+<ul>
+<li>LLM이 즉흥적으로 운동을 생성하지 않도록</li>
+<li>검증된 운동 카드(80장)만 추천 대상으로 제한하고</li>
+<li>그 안에서 상황 적합도 기반 검색을 수행한다</li>
+</ul>
+
+이는 <b>안전 + 재현성 + 평가 가능성</b>을 동시에 확보하기 위한 설계다.
+</div>
+
+</div>
+
+<!-- 2 청킹 전략 -->
+<div class="section">
+<div class="section-title">2. Chunking 전략</div>
+
+<div class="grid">
+
+<div class="card">
+<h3>단위: 1 운동 카드 = 1 벡터</h3>
+<ul>
+<li>title</li>
+<li>duration</li>
+<li>intensity</li>
+<li>equipment_level</li>
+<li>places</li>
+<li>movements</li>
+<li>tags</li>
+</ul>
+<p>
+카드를 더 쪼개지 않은 이유:
+운동은 분할 의미 단위가 아니라
+“완성된 행동 묶음”이기 때문.
+</p>
+</div>
+
+<div class="card">
+<h3>왜 문단 단위가 아닌가?</h3>
+<p>
+문단 기반 청킹은 설명 검색에 적합하지만,
+우리는 행동 선택이 목적이다.
+따라서 의미 단위는 “행동 카드”다.
+</p>
+</div>
+
+</div>
+
+</div>
+
+<!-- 3 임베딩 -->
+<div class="section">
+<div class="section-title">3. 임베딩 & Vector DB</div>
+
+<table class="table">
+<thead>
+<tr>
+<th>항목</th>
+<th>설계 선택</th>
+<th>이유</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>모델</td>
+<td>MiniLM-L12-v2 (384d)</td>
+<td>속도/정확도 균형, 한국어 대응 가능</td>
+</tr>
+<tr>
+<td>차원</td>
+<td>384</td>
+<td>카드 80장 규모에서 충분, 비용 효율</td>
+</tr>
+<tr>
+<td>정규화</td>
+<td>L2 Normalize</td>
+<td>내적 기반 유사도 안정화</td>
+</tr>
+<tr>
+<td>DB</td>
+<td>FAISS</td>
+<td>로컬 환경 재현성 + 빠른 검색</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+
+<!-- 4 검색 단계 -->
+<div class="section">
+<div class="section-title">4. 검색 4단계 구조</div>
+
+<div class="callout">
+RAG는 단순 Dense Search가 아니다.
+“습관화 병목”을 해결하기 위해
+검색 후 강력한 필터링 계층을 둔다.
+</div>
+
+<table class="table">
+<thead>
+<tr>
+<th>단계</th>
+<th>설계 목적</th>
+<th>병목 해결 연결</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dense Search</td>
+<td>의미적으로 유사한 카드 TopK 탐색</td>
+<td>상황 의미 반영</td>
+</tr>
+<tr>
+<td>Hard Filter</td>
+<td>시간/장소/장비/강도 불일치 제거</td>
+<td>“실행 불가능” 제거</td>
+</tr>
+<tr>
+<td>Safety Gate</td>
+<td>부상/회피 동작 차단</td>
+<td>사용자 보호</td>
+</tr>
+<tr>
+<td>Re-ranking</td>
+<td>유사도 75% + 시간 15% + 선호 10%</td>
+<td>완수 가능성 우선 정렬</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+
+<!-- 5 Fallback -->
+<div class="section">
+<div class="section-title">5. Fallback 전략</div>
+
+<div class="callout">
+검색 후보가 0건이거나 안전 통과 카드가 없을 경우:
+
+<b>2분 제자리 걷기 기본 카드 자동 제공</b>
+
+이는 “빈 화면 방지”가 아니라,
+습관화 루프를 끊지 않기 위한 안전장치다.
+</div>
+
+</div>
+
+<!-- 6 평가 연결 -->
+<div class="section">
+<div class="section-title">6. Eval과의 연결</div>
+
+<div class="callout">
+RAG는 Eval과 직접 연결된다:
+<ul>
+<li>retrieval_relevance_judge ≥ 0.85</li>
+<li>safety_recall ≥ 0.95</li>
+<li>fallback 발생 비율 모니터링</li>
+</ul>
+
+즉, 검색 구조는 정적 설계가 아니라
+지속적으로 검증되는 구조다.
+</div>
+
+</div>
+
+<!-- 7 확장성 -->
+<div class="section">
+<div class="section-title">7. 확장성</div>
+
+<div class="callout">
+향후 확장:
+<ul>
+<li>카드 수 증가 시 IVF/PQ 전환 가능</li>
+<li>개인별 벡터 가중치 추가</li>
+<li>루틴 단계 진입 시 강도 점진 증가 정책 적용</li>
+</ul>
+
+현재 설계는 MVP 단계에서 성능/품질 균형을 맞춘 구조다.
+</div>
+
+</div>
+
+</div>
+</body>
+</html>

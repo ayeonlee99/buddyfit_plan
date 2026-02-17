@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>BuddyFit 아키텍처 — 기획의도↔설계 매핑 다이제스트</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', -apple-system, 'Noto Sans KR', sans-serif; background: #f8f9fa; padding: 28px; color: #1a1a1a; }
+  .page { max-width: 1220px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 40px; box-shadow: 0 6px 28px rgba(0,0,0,0.08); }
+  h1 { font-size: 28px; font-weight: 800; margin-bottom: 6px; }
+  .subtitle { font-size: 14px; color: #666; margin-bottom: 26px; line-height: 1.6; }
+
+  .section { margin-top: 26px; }
+  .section-title { font-size: 20px; font-weight: 800; margin-bottom: 12px; border-bottom: 2px solid #e6e6e6; padding-bottom: 6px; }
+
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
+  .pill { font-size: 12px; background: #f2f2f2; border-radius: 999px; padding: 4px 10px; }
+  .pill b { color: #111; }
+
+  .callout { background: #fafafa; border: 1px solid #eee; border-radius: 12px; padding: 14px 16px; margin-top: 10px; line-height: 1.65; font-size: 13px; }
+  .callout strong { color: #111; }
+  .callout .k { background: #fff3d4; padding: 1px 6px; border-radius: 4px; font-weight: 700; }
+
+  .stage { border-radius: 14px; padding: 18px 22px; border: 2px solid #e6e6e6; margin-bottom: 16px; }
+  .stage-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .stage-num { font-size: 13px; font-weight: 900; color: #fff; background: #333; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .stage-title { font-size: 18px; font-weight: 800; }
+  .stage-req { font-size: 11px; color: #666; background: #f5f5f5; padding: 2px 8px; border-radius: 6px; margin-left: auto; }
+
+  .stage-summary { font-size: 13px; color: #333; margin-bottom: 10px; padding: 9px 12px; background: rgba(255,255,255,0.75); border-radius: 8px; border-left: 3px solid rgba(0,0,0,0.25); line-height: 1.65; }
+  .stage-summary b { color: #111; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; font-size: 13px; line-height: 1.65; }
+  .col { background: rgba(255,255,255,0.7); border-radius: 10px; padding: 10px 12px; border: 1px solid #f0f0f0; }
+  .col-label { font-size: 11px; font-weight: 800; color: #888; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px; }
+  code { background: #f0f0f0; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .highlight { background: #FFF9C4; padding: 1px 5px; border-radius: 3px; font-weight: 700; }
+  .tool-badge { display: inline-block; background: #E3F2FD; color: #1565C0; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+  .arrow { text-align: center; font-size: 20px; color: #bbb; padding: 4px 0; }
+
+  .sA { background: #E3F2FD; border-color: #1976D2; }
+  .sB { background: #FFF3E0; border-color: #F57C00; }
+  .sC { background: #E8F5E9; border-color: #388E3C; }
+  .sD { background: #FCE4EC; border-color: #C62828; }
+  .sE { background: #E0F2F1; border-color: #00897B; }
+  .sF { background: #F3E5F5; border-color: #7B1FA2; }
+
+  .fallback { background: #FFCDD2; border: 2px dashed #B71C1C; border-radius: 14px; padding: 14px 16px; text-align: left; font-size: 13px; margin-top: 8px; line-height: 1.65; }
+  .fallback b { color: #8b0000; }
+
+  .legend { display: flex; gap: 16px; margin-top: 18px; padding: 14px 16px; background: #f5f5f5; border-radius: 12px; font-size: 12px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  .req-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+  .req-table th, .req-table td { border: 1px solid #eee; padding: 10px 10px; vertical-align: top; }
+  .req-table th { background: #fafafa; text-align: left; font-size: 12px; color: #555; }
+  .req-table td b { color: #111; }
+</style>
+  <link rel="stylesheet" href="site.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html">← Home</a>
+</nav>
+
+<div class="page">
+  <h1>BuddyFit — 기획 의도 ↔ 설계 매핑 아키텍처</h1>
+  <p class="subtitle">
+    이 문서는 “아키텍처가 왜 이런 형태여야 하는가?”를 <b>기획 병목 가설</b>에서 출발해,
+    각 요구사항(REQ)이 <b>어느 노드/툴/분기</b>로 구현되는지까지 한 눈에 연결합니다.
+    (개발자/기획자 모두가 “왜 필요하고, 어디서 무엇을 하는지”를 동일한 언어로 이해하는 것을 목표로 합니다.)
+  </p>
+
+  <!-- 0) Product Thesis -->
+  <div class="section">
+    <div class="section-title">0. 기획 가설(타당성) — “습관화가 1차 병목이다”</div>
+
+    <div class="pill-row">
+      <span class="pill"><b>핵심 주장:</b> 운동 강도 조절/루틴 개인화 이전에, 사용자는 “지속”을 못해서 다음 단계에 도달하지 못한다</span>
+      <span class="pill"><b>병목:</b> 동기부여 부족 + 완수 불가능한 목표(컨디션/맥락 불일치)</span>
+      <span class="pill"><b>해결전략:</b> 동기부여(버디 연결) + 지속성(완수 가능한 미션만)</span>
+    </div>
+
+    <div class="callout">
+      <strong>왜 이 가설이 타당한가?</strong><br>
+      기존 서비스는 주로 “운동 강도 제안”에 집중하지만, 초반 이탈은 강도 조절 이전에 발생합니다.
+      사용자는 바쁜 일정/피곤/공간/장비 제약으로 <span class="k">“실제로 지금 할 수 있는 행동”</span>이 아니면 실행을 못하고,
+      실행을 못하면 성공경험이 쌓이지 않아 습관화 단계에서 멈춥니다.<br><br>
+      그래서 BuddyFit은 <b>습관화(시작/지속) → 이후 강도/루틴 최적화</b>의 계단을 만들고,
+      첫 계단을 넘기 위해 <b>(1) 끊김 없는 부담 최소화</b>와 <b>(2) 버디 기반 응원 동기부여</b>를 제품 가치의 최전면에 둡니다.
+    </div>
+
+    <table class="req-table">
+      <thead>
+        <tr>
+          <th style="width:18%">REQ (기획 요구)</th>
+          <th style="width:32%">한 줄 정의</th>
+          <th style="width:50%">설계 매핑(어디서/무엇으로)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>REQ-1 습관화(지속성)</b></td>
+          <td>사용자가 “지금 당장 완수 가능한” 행동을 제공해 성공 경험을 누적한다</td>
+          <td><b>Planner Stage1 Downshift</b>(2분/저강도 자동 전환) + <b>Intervention</b>(초저강도 대체 미션) + <b>Fallback</b>(빈 결과 방지)</td>
+        </tr>
+        <tr>
+          <td><b>REQ-2 동기부여</b></td>
+          <td>혼자 하는 운동의 이탈을 “사회적 연결(버디)”로 완충한다</td>
+          <td><b>BuddySync</b>(완료여부+응원 메시지 전달) + TeamState 동기화/카운트</td>
+        </tr>
+        <tr>
+          <td><b>REQ-3 개인화</b></td>
+          <td>사용자의 과거 패턴/선호/실패 이유를 다음 추천에 반영한다</td>
+          <td><b>Planner Long Memory 조회</b> + PostAction upsert_long_memory + 리랭킹 반영</td>
+        </tr>
+        <tr>
+          <td><b>REQ-4 안전(부상 회피)</b></td>
+          <td>부상 부위/회피 동작과 충돌하는 미션이 추천되지 않도록 사전 차단한다</td>
+          <td><b>Planner Safety Gate</b>(avoid_movements, intensity 임계) + 대체 카드/폴백</td>
+        </tr>
+        <tr>
+          <td><b>REQ-5 서비스 책임범위</b></td>
+          <td>사용자 프리텍스트가 의학적 영역으로 확장돼도, 서비스가 책임질 수 없는 조언을 하지 않는다</td>
+          <td><b>Output Guardrail</b>(의학 조언 차단/전문가 상담 유도/톤 정리) + 이벤트 기록</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 1) Workflow nodes -->
+  <div class="section">
+    <div class="section-title">1. 8-Node Workflow — 요구사항이 구현되는 “위치”</div>
+
+    <!-- 1 ContextCollector -->
+    <div class="stage sA">
+      <div class="stage-header">
+        <div class="stage-num">1</div>
+        <div class="stage-title">ContextCollector</div>
+        <div class="stage-req">REQ: 상태 동기화</div>
+      </div>
+
+      <div class="stage-summary">
+        <b>왜 필요한가?</b> “지금 가능한 미션”은 현재 컨텍스트(장소/시간/컨디션/장비)와 과거 상태(최근 미션/스킵/리스크)가 결합되어야 판단 가능하다.<br>
+        <b>무엇을 하는가?</b> 입력을 상태(SSOT)에 정규화하여 이후 모든 노드의 판단 근거를 고정한다.
+      </div>
+
+      <div class="grid">
+        <div class="col">
+          <div class="col-label">입력 데이터</div>
+          today_context(place/time_budget/condition/equipment/space/free_text)<br>
+          local_time<br>
+          디스크 스냅샷(UserState/TeamState)
+        </div>
+        <div class="col">
+          <div class="col-label">도구 · 동작</div>
+          <span class="tool-badge">get_user_state</span>, <span class="tool-badge">get_team_state</span><br>
+          <span class="tool-badge">append_event_log</span>(CONTEXT_SUBMITTED)
+        </div>
+        <div class="col">
+          <div class="col-label">출력(상태 갱신)</div>
+          GraphState 구성(SSOT)<br>
+          <code>refinement_count</code> 초기화<br>
+          최근 7일 히스토리/리스크 로딩
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">▼</div>
+
+    <!-- 2 Planner -->
+    <div class="stage sF">
+      <div class="stage-header">
+        <div class="stage-num">2</div>
+        <div class="stage-title">Planner</div>
+        <div class="stage-req">REQ-1 지속성 · REQ-3 개인화 · REQ-4 안전</div>
+      </div>
+
+      <div class="stage-summary">
+        <b>기획 의도 매핑(핵심):</b> 습관화의 1차 병목(시작/지속)을 해결하려면, “운동 강도 최적화”보다 먼저 <b>완수 가능한 미션만</b> 제공해야 한다.<br>
+        그래서 Planner는 (1) 컨디션/연속미수행 시 <b>2분·저강도 다운시프트</b>로 진입장벽을 낮추고, (2) 장비/공간/시간 제약을 하드필터로 보장하며, (3) 부상/회피 동작은 Safety Gate에서 차단한다.
+      </div>
+
+      <div class="grid">
+        <div class="col">
+          <div class="col-label">입력(습관화 판단 재료)</div>
+          condition, time_budget, space/equipment<br>
+          <code>history_7d</code>(skipped/miss_streak)<br>
+          <code>user_profile</code>(avoid_movements)
+        </div>
+        <div class="col">
+          <div class="col-label">핵심 설계(무엇을 보장?)</div>
+          <span class="highlight">지속성</span>: 다운시프트(2분) + 폴백(빈 결과 방지)<br>
+          <span class="highlight">개인화</span>: Long Memory 힌트 → 검색/리랭킹 반영<br>
+          <span class="highlight">안전</span>: 부상/회피 동작 충돌 사전 차단 + 대체 카드
+        </div>
+        <div class="col">
+          <div class="col-label">출력</div>
+          <code>latest_mission</code>(Top-1)<br>
+          <code>min_action_plan</code>(Top-1 + Alt-1)<br>
+          retrieval_metadata + 이벤트 기록
+        </div>
+      </div>
+
+      <div class="fallback">
+        <b>Planner Fallback (끊김 방지):</b><br>
+        후보 0건 또는 안전통과 0건이면, <b>2분 초저강도 기본 미션</b>을 자동 제공한다.<br>
+        → 사용자는 “추천이 비었다”는 경험을 하지 않고, 습관화 루프가 끊기지 않는다.
+      </div>
+    </div>
+
+    <div class="arrow">▼</div>
+
+    <!-- 3 Reflector -->
+    <div class="stage sB">
+      <div class="stage-header">
+        <div class="stage-num">3</div>
+        <div class="stage-title">Reflector</div>
+        <div class="stage-req">REQ: 실행가능성 검증(습관화 보조)</div>
+      </div>
+
+      <div class="stage-summary">
+        <b>왜 필요한가?</b> Planner가 “가능한 후보”를 만들더라도, 최종 미션이 시간/컨디션에 비해 과하면 이탈이 발생한다.<br>
+        <b>무엇을 하는가?</b> 실행가능성 위반 시 Planner로 되돌려 <b>습관화(완수 가능성)</b>을 우선 보장한다.
+      </div>
+
+      <div class="grid">
+        <div class="col">
+          <div class="col-label">판단 기준</div>
+          <span class="highlight">duration > time_budget</span> → replan<br>
+          <span class="highlight">tired & intensity ≥ 3</span> → replan<br>
+          <code>refinement_count ≥ 2</code> → 루프 차단(pass)
+        </div>
+        <div class="col">
+          <div class="col-label">분기</div>
+          replan → Planner 재진입<br>
+          pass → Monitor
+        </div>
+        <div class="col">
+          <div class="col-label">기획 매핑</div>
+          “완수 불가능 목표 제공”이 습관화 병목이므로,<br>
+          Reflector는 <b>습관화 지속성</b>을 위한 품질 게이트 역할
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">▼</div>
+
+    <!-- 4 Monitor -->
+    <div class="stage sC">
+      <div class="stage-header">
+        <div class="stage-num">4</div>
+        <div class="stage-title">Monitor</div>
+        <div class="stage-req">REQ: 지속성 붕괴(리듬 이탈) 감지</div>
+      </div>
+
+      <div class="stage-summary">
+        <b>왜 필요한가?</b> 습관화는 “한 번 추천”이 아니라 “끊김 없는 루프”가 핵심이다.<br>
+        <b>무엇을 하는가?</b> 늦은 시간 미완료/연속 스킵을 감지하여, 즉시 Intervention으로 전환한다(끊김 방지).
+      </div>
+
+      <div class="grid">
+        <div class="col">
+          <div class="col-label">트리거</div>
+          T1: local_time.hour ≥ 23 & 미완료<br>
+          T2: history_7d.skipped_count ≥ 2
+        </div>
+        <div class="col">
+          <div class="col-label">동작</div>
+          <span class="tool-badge">append_event_log</span>(RHYTHM_BREAK_DETECTED)
+        </div>
+        <div class="col">
+          <div class="col-label">분기</div>
+          trigger → Intervention<br>
+          no trigger → Output
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">▼</div>
+
+    <!-- 5 Intervention -->
+    <div class="stage sD">
+      <div class="stage-header">
+        <div class="stage-num">5</div>
+        <div class="stage-title">Intervention</div>
+        <div class="stage-req">REQ-1 지속성 강화(초저강도 완수)</div>
+      </div>
+
+      <div class="stage-summary">
+        <b>기획 의도 매핑(중요):</b> 습관화의 핵심은 “계속 할 수 있다”는 자아 인식과 성공 경험의 누적이다.<br>
+        그래서 Intervention은 운동 강도 가치보다 앞선 병목(습관화)을 해결하기 위해, <b>2분 초저강도 대체 미션</b>으로 완수 확률을 극대화한다.
+      </div>
+
+      <div class="grid">
+        <div class="col">
+          <div class="col-label">입력(끊김 원인 단서)</div>
+          today_context + free_text<br>
+          history_7d (miss/skip)<br>
+          long_memory(failure_reason/회고)
+        </div>
+        <div class="col">
+          <div class="col-label">행동(무엇을 바꾸나)</div>
+          초저강도 카드로 대체(2분, 강도1)<br>
+          필요 시 안전 재검증(부상/회피)
+        </div>
+        <div class="col">
+          <div class="col-label">출력</div>
+          latest_mission 교체/갱신<br>
+          system_message(응원/안내)<br>
+          INTERVENTION_GENERATED 기록
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">▼</div>
+
+    <!-- 6 Output -->
+    <div class="stage sB">
+      <div class="stage-header">
+        <div class="stage-num">6</div>
+        <div class="stage-title">Output</div>
+        <div class="stage-req">REQ-5 책임범위(의학 조언 차단) · REQ: 신뢰 보호</div>
+      </div>
+
+      <div class="stage-summary">
+        <b>왜 기획적으로 필요한가?</b><br>
+        사용자는 운동 서비스에서 프리텍스트로 “어디가 아프다/부상/통증”을 자연스럽게 말할 수 있다.
+        이때 에이전트가 자의적으로 의학적 조언을 하면, (1) 서비스 맥락에서 이탈하고 (2) 책임 범위를 넘어가며 (3) 부정확한 정보로 신뢰를 훼손한다.<br><br>
+        <b>무엇을 하는가?</b> 출력 문장에 포함될 수 있는 의학적/진단적 표현을 차단하고,
+        “운동 전문가/의료 전문가 상담” 안내로 경계를 명확히 한다(서비스 신뢰/리스크 관리).
+      </div>
+
+      <div class="grid">
+        <div class="col">
+          <div class="col-label">입력</div>
+          system_message (LLM/템플릿 산출)<br>
+          free_text(통증/부상 언급 가능)
+        </div>
+        <div class="col">
+          <div class="col-label">가드레일 동작</div>
+          <span class="tool-badge">safety_gate.filter_output</span><br>
+          의학 키워드/진단/처방형 문구 제거<br>
+          필요 시 “전문가 상담 권고” 문구 삽입
+        </div>
+        <div class="col">
+          <div class="col-label">출력</div>
+          사용자 노출 메시지(책임범위 내)<br>
+          <span class="tool-badge">append_event_log</span>(GUARDRAIL_TRIGGERED)
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">▼</div>
+
+    <!-- 7 PostAction -->
+    <div class="stage sE">
+      <div class="stage-header">
+        <div class="stage-num">7</div>
+        <div class="stage-title">PostAction</div>
+        <div class="stage-req">REQ-3 개인화 학습 · REQ-1 지속성 루프</div>
+      </div>
+
+      <div class="stage-summary">
+        <b>왜 필요한가?</b> 습관화는 “추천”이 아니라 “피드백 루프”에서 만들어진다.<br>
+        <b>무엇을 하는가?</b> 완료/스킵/너무 어려움/피드백을 상태와 Long Memory에 기록해 다음 추천을 실제 행동 기반으로 개선한다.
+      </div>
+
+      <div class="grid">
+        <div class="col">
+          <div class="col-label">입력</div>
+          system_action ∈ {completed, skipped, too_hard, feedback}<br>
+          action_payload(이유/코멘트)
+        </div>
+        <div class="col">
+          <div class="col-label">저장(학습)</div>
+          <span class="tool-badge">update_user_state</span>(short memory)<br>
+          <span class="tool-badge">upsert_long_memory</span>(preference/failure_reason)
+        </div>
+        <div class="col">
+          <div class="col-label">분기</div>
+          completed → BuddySync<br>
+          feedback → Planner(재추천)<br>
+          기타 → 종료
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">▼</div>
+
+    <!-- 8 BuddySync -->
+    <div class="stage sC">
+      <div class="stage-header">
+        <div class="stage-num">8</div>
+        <div class="stage-title">BuddySync</div>
+        <div class="stage-req">REQ-2 동기부여(버디 응원) · REQ: 사회적 지속성</div>
+      </div>
+
+      <div class="stage-summary">
+        <b>기획 의도 매핑(중요):</b> 동기부여를 “운동 강도 제안”이 아니라 <b>버디와의 연결/응원 메시지</b>로 제공한다.<br>
+        미션 완료 시 버디에게 <b>완료 여부 + 응원 메시지</b>를 전달해 사회적 동기를 강화하고,
+        사용자가 습관화 단계에서 이탈하지 않도록 “계속 이어지는 느낌”을 만든다.
+      </div>
+
+      <div class="grid">
+        <div class="col">
+          <div class="col-label">입력</div>
+          pair_id, buddy_ids, sync_window<br>
+          latest_mission.status == completed
+        </div>
+        <div class="col">
+          <div class="col-label">행동</div>
+          역할(A/B) 판별 + 완료 플래그 동기화<br>
+          응원 메시지 생성/전달(수동 전송 옵션 포함)<br>
+          <span class="tool-badge">update_team_state</span> + 카운트 증가
+        </div>
+        <div class="col">
+          <div class="col-label">출력</div>
+          buddy_nudge payload<br>
+          weekly_team_touch_count++<br>
+          이벤트: TEAM_TOUCH_CONFIRMED 등
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#1976D2"></div> 습관화/지속성 (Downshift, Intervention, Fallback, Reflector)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#00897B"></div> 동기부여 (BuddySync, TeamState)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#C62828"></div> 안전/책임범위 (Safety Gate, Output Guardrail)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#7B1FA2"></div> 개인화 (Long Memory, PostAction 학습)</div>
+    </div>
+
+  </div>
+
+  <!-- 2) Design sanity check -->
+  <div class="section">
+    <div class="section-title">2. “요구사항이 타당한가?” — 설계로 검증 가능한 형태로 정리</div>
+
+    <div class="callout">
+      <strong>검증 가능한 질문(발표에서 개발자들이 납득하는 포인트)</strong><br><br>
+      1) <b>습관화가 실제 병목인가?</b> → miss_streak, skipped_count, 첫 7일 유지율 같은 지표로 확인 가능<br>
+      2) <b>2분 다운시프트/인터벤션이 지속성을 올리는가?</b> → intervention 이후 완료율/연속 유지율 비교 가능<br>
+      3) <b>버디 응원이 동기부여에 기여하는가?</b> → buddy_nudge 노출 이후 재진입/완료율 변화 측정 가능<br>
+      4) <b>안전/의학 가드레일이 신뢰를 지키는가?</b> → guardrail_triggered 로그, 민감 발화 시 이탈률/CS 감소로 추적 가능<br><br>
+      즉, 이 아키텍처는 “멋있게 보이기 위한 구조”가 아니라, <span class="k">가설→요구→구현→로그→평가</span>가 연결되도록 설계되어 있다.
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
