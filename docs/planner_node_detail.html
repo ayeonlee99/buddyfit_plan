@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>BuddyFit Planner 7-Stage Pipeline</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', -apple-system, 'Noto Sans KR', sans-serif; background: #f8f9fa; padding: 24px; color: #1a1a1a; }
+  .page { max-width: 1100px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 36px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+  h1 { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+  .subtitle { font-size: 14px; color: #666; margin-bottom: 28px; }
+  .pipeline { display: flex; flex-direction: column; gap: 0; }
+  .stage { border-radius: 12px; padding: 18px 22px; position: relative; }
+  .stage-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .stage-num { font-size: 13px; font-weight: 800; color: #fff; background: #333; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .stage-title { font-size: 17px; font-weight: 700; }
+  .stage-req { font-size: 11px; color: #888; background: #f5f5f5; padding: 2px 8px; border-radius: 4px; margin-left: auto; }
+  .stage-body { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; font-size: 13px; line-height: 1.65; }
+  .col { background: rgba(255,255,255,0.7); border-radius: 8px; padding: 10px 12px; }
+  .col-label { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px; }
+  .highlight { background: #FFF9C4; padding: 1px 4px; border-radius: 3px; font-weight: 600; }
+  .tool-badge { display: inline-block; background: #E3F2FD; color: #1565C0; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .model-badge { display: inline-block; background: #F3E5F5; color: #6A1B9A; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .arrow { text-align: center; font-size: 20px; color: #bbb; padding: 4px 0; }
+  .s1 { background: #E3F2FD; border: 2px solid #1976D2; }
+  .s2 { background: #F3E5F5; border: 2px solid #7B1FA2; }
+  .s3 { background: #FFF3E0; border: 2px solid #F57C00; }
+  .s4 { background: #E8F5E9; border: 2px solid #388E3C; }
+  .s5 { background: #FCE4EC; border: 2px solid #C62828; }
+  .s6 { background: #FFF8E1; border: 2px solid #F9A825; }
+  .s7 { background: #E0F2F1; border: 2px solid #00897B; }
+  .fallback { background: #FFCDD2; border: 2px dashed #B71C1C; border-radius: 12px; padding: 14px 22px; text-align: center; font-size: 13px; margin-top: 4px; }
+  .legend { display: flex; gap: 16px; margin-top: 20px; padding: 14px 18px; background: #f5f5f5; border-radius: 10px; font-size: 12px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  code { background: #f0f0f0; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+  .stage-summary { font-size: 12.5px; color: #444; margin-bottom: 10px; padding: 7px 12px; background: rgba(255,255,255,0.65); border-radius: 6px; border-left: 3px solid rgba(0,0,0,0.2); line-height: 1.6; }
+  .stage-summary b { color: #222; }
+</style>
+  <link rel="stylesheet" href="site.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html">← Home</a>
+</nav>
+
+<div class="page">
+  <h1>BuddyFit Planner — 7-Stage RAG Pipeline</h1>
+  <p class="subtitle">사용자 입력(place · time · condition · equipment · space · free_text) → 7단계 파이프라인 → 최적 미션 1장 + 대안 1장 출력</p>
+
+  <div class="pipeline">
+
+    <!-- Stage 1 -->
+    <div class="stage s1">
+      <div class="stage-header">
+        <div class="stage-num">1</div>
+        <div class="stage-title">습관 우선 전환</div>
+        <div class="stage-req">REQ: 다운시프트</div>
+      </div>
+      <div class="stage-summary">기존 피트니스 서비스는 운동 강도 조절에만 초점을 맞추지만, 입문자의 실제 병목은 <b>"시작 자체의 부담"</b>입니다. BuddyFit은 <b>습관화를 운동 강도보다 높은 우선순위</b>로 둡니다. 컨디션이 낮거나 연속 미수행이 감지되면, 시간과 강도를 <b>초저수준(2분·강도1)으로 낮춰 진입장벽을 최소화</b>하고 <b>"오늘도 해냈다"는 수행 완료 경험</b>을 우선합니다. → 이 값이 이후 모든 단계의 검색·필터 기준이 됩니다.</div>
+      <div class="stage-body">
+        <div class="col">
+          <div class="col-label">입력 데이터</div>
+          <b>런타임-사용자:</b> condition, time_budget<br>
+          <b>런타임-State:</b> miss_streak_days<br>
+          <b>설계:</b> 상수표 {tired→1, ok→2, good→3}
+        </div>
+        <div class="col">
+          <div class="col-label">판단 기준</div>
+          <span class="highlight">condition == "tired"</span> OR<br>
+          <span class="highlight">miss_streak ≥ 2</span><br>
+          → YES: duration=<b>2분 자동 전환</b>, strategy=minimal<br>
+          → NO: duration=사용자값, strategy=standard
+        </div>
+        <div class="col">
+          <div class="col-label">출력</div>
+          <code>duration</code> (2 or 사용자값)<br>
+          <code>strategy</code> (minimal or standard)<br>
+          <code>max_intensity</code> = base - (streak≥2 ? 1 : 0)<br>
+          → <b>이후 전 단계에서 사용</b>
+        </div>
+      </div>
+    </div>
+    <div class="arrow">▼</div>
+
+    <!-- Stage 2 -->
+    <div class="stage s2">
+      <div class="stage-header">
+        <div class="stage-num">2</div>
+        <div class="stage-title">Long Memory 조회</div>
+        <div class="stage-req">REQ: 개인화</div>
+      </div>
+      <div class="stage-summary">이 사용자가 <b>과거 비슷한 상황에서 어떤 운동을 하고 어떻게 느꼈는지</b>를 벡터DB에서 검색합니다. 예: "야근 후 스트레칭이 좋았다"라는 과거 회고가 있으면, 이번 추천 검색에도 그 경험을 반영합니다. 처음 쓰는 사용자거나 조회 실패 시에도 정상 진행됩니다.</div>
+      <div class="stage-body">
+        <div class="col">
+          <div class="col-label">입력 데이터</div>
+          <b>런타임-계산:</b> "{place} {dur}분 {condition}"<br>
+          <b>런타임-Memory:</b> long_memory.index (FAISS)<br>
+          <b>설계:</b> <span class="model-badge">MiniLM-L12-v2</span>
+        </div>
+        <div class="col">
+          <div class="col-label">도구 · 동작</div>
+          <span class="tool-badge">query_long_memory()</span><br>
+          필터: user_id + type=<b>"reflection"</b><br>
+          top_k=3 → 상위 <b>2건</b>만 힌트로 사용 (각 50자)
+        </div>
+        <div class="col">
+          <div class="col-label">출력</div>
+          <code>long_memory_hints[]</code><br>
+          예: "야근 후 스트레칭이 좋았다"<br>
+          <b>실패 시:</b> hints=[] → 정상 진행<br>
+          (워크플로우 중단 없음)
+        </div>
+      </div>
+    </div>
+    <div class="arrow">▼</div>
+
+    <!-- Stage 3 -->
+    <div class="stage s3">
+      <div class="stage-header">
+        <div class="stage-num">3</div>
+        <div class="stage-title">검색 쿼리 생성</div>
+        <div class="stage-req">REQ: 다중소스 융합</div>
+      </div>
+      <div class="stage-summary"><b>장소, 컨디션, 시간, 장비, 사용자 메모, 과거 경험</b> 6가지 정보를 하나의 자연어 문장으로 합칩니다. 이 문장이 다음 단계에서 "어떤 운동 카드가 이 상황에 가장 어울리는가?"를 찾는 <b>검색어</b> 역할을 합니다.</div>
+      <div class="stage-body">
+        <div class="col">
+          <div class="col-label">6가지 소스</div>
+          ① <b>place</b> (사용자)<br>
+          ② <b>condition 키워드</b> (설계 매핑)<br>
+          ③ <b>duration + "분"</b> (Stage1 계산값)<br>
+          ④ <b>equipment/space</b> (사용자)
+        </div>
+        <div class="col">
+          <div class="col-label">6가지 소스 (계속)</div>
+          ⑤ <b>free_text</b> (사용자 메모 원문)<br>
+          ⑥ <b>Memory hints[:2]</b> (Stage2 결과)<br><br>
+          → <code>" ".join(parts)</code>
+        </div>
+        <div class="col">
+          <div class="col-label">출력</div>
+          <code>query</code> = 자연어 문자열<br>
+          예: "home 피곤함 가벼운 동작 2분 장비 없음 좁은 공간 야근 후 너무 피곤 ..."<br>
+          → Stage4에서 <b>384dim 벡터</b>로 변환
+        </div>
+      </div>
+    </div>
+    <div class="arrow">▼</div>
+
+    <!-- Stage 4 -->
+    <div class="stage s4">
+      <div class="stage-header">
+        <div class="stage-num">4</div>
+        <div class="stage-title">FAISS 벡터 검색 + Hard Filter + Re-ranking</div>
+        <div class="stage-req">REQ: RAG 핵심</div>
+      </div>
+      <div class="stage-summary">사전에 준비된 <b>80장 운동 카드</b> 중에서 검색어와 의미적으로 가장 가까운 카드를 AI 모델이 찾아냅니다. 그 후 <b>장소·시간·장비·강도·소음</b> 5가지 물리 조건을 하나라도 못 맞추면 탈락시키고, 살아남은 카드를 <b>의미 유사도 75% + 시간 일치도 15% + 선호 키워드 10%</b> 비율로 점수를 매겨 순위를 정합니다.</div>
+      <div class="stage-body">
+        <div class="col">
+          <div class="col-label">도구 · 모델 · DB</div>
+          <span class="tool-badge">search_rag_cards(top_k=12)</span><br>
+          <span class="model-badge">MiniLM-L12-v2 384dim</span><br>
+          <b>설계:</b> rag_cards.index (80장 벡터)<br>
+          <b>4a.</b> 쿼리 → 임베딩 → L2 정규화<br>
+          <b>4b.</b> FAISS 내적검색 → 상위 36개
+        </div>
+        <div class="col">
+          <div class="col-label">Hard Filter 5개 + 추가</div>
+          <b>4c.</b> 5개 필터 (하나라도 불통과 → 탈락)<br>
+          · <span class="highlight">place ∈ card.places</span><br>
+          · <span class="highlight">card.dur ≤ Stage1 duration</span><br>
+          · card.equip ≤ user equip (레벨비교)<br>
+          · card.intensity ≤ Stage1 max<br>
+          · noise_ok=F → quiet 태그 필수<br>
+          <b>4e.</b> condition_fit, space 추가 필터<br>
+          <b>4f.</b> Tier: minimal→contact만
+        </div>
+        <div class="col">
+          <div class="col-label">Re-ranking 공식</div>
+          <b>4d.</b> 통과 후보 점수 재정렬:<br><br>
+          <span class="highlight">final = 0.75×dense<br>+ 0.15×dur_match<br>+ 0.10×preference</span><br><br>
+          dense: FAISS 코사인유사도<br>
+          dur_match: 1.0−|카드−요청|×0.2<br>
+          pref: movement 키워드매칭×0.3
+        </div>
+      </div>
+    </div>
+    <div class="arrow">▼ &nbsp; 후보 0건 → Fallback ↴</div>
+
+    <!-- Stage 5 -->
+    <div class="stage s5">
+      <div class="stage-header">
+        <div class="stage-num">5</div>
+        <div class="stage-title">Safety Gate</div>
+        <div class="stage-req">REQ: 안전 검증</div>
+      </div>
+      <div class="stage-summary">필터를 통과한 카드라도 <b>이 사용자에게 위험할 수 있는지</b> 한 장씩 검사합니다. "무릎이 아파서 점프 금지"인 사용자에게 점프 동작 카드가 올라오면 <b>안전한 대체 카드(걷기/벽밀기)로 자동 교체</b>합니다. 대체할 카드도 없으면 가장 안전한 2분 제자리 걷기를 추천합니다.</div>
+      <div class="stage-body">
+        <div class="col">
+          <div class="col-label">도구</div>
+          <span class="tool-badge">safety_check_plan()</span><br>
+          후보 카드 <b>각각에 개별 호출</b>
+        </div>
+        <div class="col">
+          <div class="col-label">2단계 검증</div>
+          <b>Check 1:</b> <span class="highlight">avoid_movements 충돌</span><br>
+          user 회피동작이 card 동작에 포함?<br><br>
+          <b>Check 2:</b> <span class="highlight">과부하 방지</span><br>
+          card.intensity > max_intensity?
+        </div>
+        <div class="col">
+          <div class="col-label">판정 · 패치</div>
+          <b>severity=0:</b> 안전 → 그대로 통과<br>
+          <b>severity=1:</b> 경고 → 패치 카드 교체<br>
+          후보 3장 순회: march → walk → wall_push<br>
+          avoid와 충돌 없는 첫 카드로 대체<br>
+          <b>전부 blocked → Fallback</b>
+        </div>
+      </div>
+    </div>
+    <div class="arrow">▼ &nbsp; 안전통과 0건 → Fallback ↴</div>
+
+    <!-- Stage 6 -->
+    <div class="stage s6">
+      <div class="stage-header">
+        <div class="stage-num">6</div>
+        <div class="stage-title">Top-1 + Alt-1 선택</div>
+        <div class="stage-req">REQ: 추천 다양성</div>
+      </div>
+      <div class="stage-summary">점수가 가장 높은 카드를 <b>주 추천(Top-1)</b>으로, 그와 <b>동작 종류가 다른</b> 카드를 <b>대안(Alt-1)</b>으로 고릅니다. 예: 주 추천이 "제자리 걷기"면 대안은 "스트레칭"처럼 다른 움직임을 제시해서, 사용자가 기분에 맞는 쪽을 선택할 수 있게 합니다.</div>
+      <div class="stage-body">
+        <div class="col">
+          <div class="col-label">Top-1 (주 추천)</div>
+          안전 통과 목록의 <b>[0]번째</b><br>= Re-ranking 최고점 카드
+        </div>
+        <div class="col">
+          <div class="col-label">Alt-1 (대안)</div>
+          목록[1:]에서 Top-1과<br><span class="highlight">movements 집합이 다른</span><br>첫 번째 카드
+        </div>
+        <div class="col">
+          <div class="col-label">예시</div>
+          Top-1: march (제자리 걷기)<br>
+          Alt-1: stretch (목/어깨 스트레칭)<br>
+          → 동작 패턴이 달라야 대안 가치 있음
+        </div>
+      </div>
+    </div>
+    <div class="arrow">▼</div>
+
+    <!-- Stage 7 -->
+    <div class="stage s7">
+      <div class="stage-header">
+        <div class="stage-num">7</div>
+        <div class="stage-title">출력 생성 + 이벤트 기록</div>
+        <div class="stage-req">REQ: 출력 포맷</div>
+      </div>
+      <div class="stage-summary">선택된 카드를 <b>"오늘의 미션"</b> 형태로 포장합니다. 미션 이름, 소요 시간, 운동 단계 설명, 코칭 팁을 담은 구조화된 JSON을 만들고, 추천 과정의 통계(몇 장 검색 → 몇 장 통과 → 최종 몇 장)를 <b>이벤트 로그에 기록</b>합니다. 이 미션이 다음 노드(Reflector)로 넘어갑니다.</div>
+      <div class="stage-body">
+        <div class="col">
+          <div class="col-label">latest_mission</div>
+          mission_id (UUID)<br>
+          card_id, title, duration<br>
+          intensity_level<br>
+          status = <b>"proposed"</b><br>
+          rationale (추천 이유 1줄)
+        </div>
+        <div class="col">
+          <div class="col-label">min_action_plan</div>
+          options[0] = Top-1 상세<br>
+          options[1] = Alt-1 상세<br>
+          (title, description, steps,<br>
+          movements, coaching_tip)<br>
+          retrieval_metadata (통계)
+        </div>
+        <div class="col">
+          <div class="col-label">부가 동작</div>
+          <b>Optional:</b> LLM 정제<br>
+          ENABLE_LLM_PLANNER=true 시<br>
+          Claude/Upstage (temp=0.3)<br>
+          실패→알고리즘 결과 유지<br><br>
+          <b>Event:</b> MISSION_GENERATED<br>
+          <code>refinement_count += 1</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fallback -->
+    <div class="fallback">
+      ⚠️ <b>Fallback 경로</b> — Stage 4/5에서 후보 0건 시 → <code>MA_HOME_2_MARCH_001</code> (2분 제자리 걷기) 기본 미션 자동 제공 + <code>RETRIEVAL_FAILED</code> 이벤트 — <b>사용자에게 빈 화면을 보여주지 않음</b>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#1976D2"></div> 설계 데이터: RAG 카드 80장, FAISS 인덱스, 상수표, Tier 규칙, Fallback 3장</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#F57C00"></div> 런타임-사용자: today_context (place, time, condition, equipment, space, free_text)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#7B1FA2"></div> 런타임-Memory: Long Memory 벡터DB (과거 회고/실패/선호)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#388E3C"></div> 런타임-State: history_7d, user_profile, risk_score</div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

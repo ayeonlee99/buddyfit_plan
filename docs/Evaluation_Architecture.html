@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>BuddyFit Evaluation Architecture</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Pretendard', -apple-system, 'Noto Sans KR', sans-serif;
+       background:#f8f9fa; padding:30px; color:#1a1a1a; }
+.page { max-width:1200px; margin:0 auto; background:#fff;
+        border-radius:16px; padding:40px;
+        box-shadow:0 6px 28px rgba(0,0,0,0.08); }
+
+h1 { font-size:28px; font-weight:800; margin-bottom:8px; }
+.subtitle { font-size:14px; color:#666; margin-bottom:28px; line-height:1.6; }
+
+.section { margin-top:30px; }
+.section-title { font-size:20px; font-weight:800; margin-bottom:12px;
+                 border-bottom:2px solid #e5e5e5; padding-bottom:6px; }
+
+.callout {
+  background:#fafafa;
+  border-left:4px solid #333;
+  padding:14px 16px;
+  border-radius:8px;
+  font-size:13px;
+  line-height:1.7;
+  margin-bottom:14px;
+}
+
+.grid { display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+        gap:14px; font-size:13px; }
+
+.card { border:1px solid #eee;
+        border-radius:12px;
+        padding:14px;
+        background:#fff; }
+
+.card h3 { font-size:15px; margin-bottom:6px; }
+
+.badge { display:inline-block;
+         font-size:11px;
+         padding:2px 8px;
+         border-radius:999px;
+         background:#f2f2f2;
+         margin-bottom:6px; }
+
+.table { width:100%; border-collapse:collapse; font-size:13px; margin-top:12px; }
+.table th, .table td { border:1px solid #eee; padding:10px; vertical-align:top; }
+.table th { background:#fafafa; text-align:left; font-size:12px; }
+
+.highlight { background:#fff3d4; padding:2px 6px; border-radius:4px; font-weight:600; }
+
+.footer-note { margin-top:20px; font-size:12px; color:#555; line-height:1.6; }
+</style>
+  <link rel="stylesheet" href="site.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html">← Home</a>
+</nav>
+
+<div class="page">
+
+<h1>BuddyFit Evaluation Architecture</h1>
+<p class="subtitle">
+우리의 평가 설계는 단순한 “정답률 측정”이 아니라,
+<b>습관화 병목 가설이 실제로 해결되고 있는지</b>,
+<b>안전/지속성/개인화가 설계대로 작동하는지</b>,
+그리고 <b>지속적으로 개선 가능한 구조인지</b>를 검증하는 체계다.
+</p>
+
+<div class="section">
+<div class="section-title">1. 평가의 출발점: 기획 가설</div>
+
+<div class="callout">
+<b>가설:</b> 운동 강도 최적화 이전에, “습관화 실패”가 1차 병목이다.<br>
+따라서 우리는 다음을 증명해야 한다:
+<ul>
+<li>Downshift/Intervention이 실제로 적용되는가?</li>
+<li>Fallback/안전 게이트가 제대로 동작하는가?</li>
+<li>추천 품질은 기본 수준 이상인가?</li>
+<li>안전 시나리오에서 위험 추천이 차단되는가?</li>
+</ul>
+</div>
+
+<table class="table">
+<thead>
+<tr>
+<th>기획 요구</th>
+<th>검증 질문</th>
+<th>Eval Metric</th>
+<th>구현 위치</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>습관화 지속성</td>
+<td>연속 미수행 시 2분 Downshift가 적용되는가?</td>
+<td><b>downshift_applied</b></td>
+<td>rule-based evaluator</td>
+</tr>
+<tr>
+<td>Fallback 안정성</td>
+<td>후보 0건 시 기본 카드로 전환되는가?</td>
+<td><b>fallback_card_selected</b></td>
+<td>planner evaluator</td>
+</tr>
+<tr>
+<td>추천 정확성</td>
+<td>예상 카드와 실제 카드가 일치하는가?</td>
+<td><b>card_id_match</b></td>
+<td>baseline gate</td>
+</tr>
+<tr>
+<td>의미 품질</td>
+<td>답변이 질문에 맞고 근거에 기반하는가?</td>
+<td>correctness / relevance / groundedness</td>
+<td>LLM-as-Judge</td>
+</tr>
+<tr>
+<td>안전</td>
+<td>위험 시나리오에서 안전 회수가 95% 이상인가?</td>
+<td><b>safety_recall ≥ 0.95</b></td>
+<td>eval gate</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+
+<div class="section">
+<div class="section-title">2. Eval 구조: Rule + Judge 혼합 모델</div>
+
+<div class="grid">
+
+<div class="card">
+<div class="badge">Rule-based</div>
+<h3>행동 계약 검증</h3>
+<ul>
+<li>card_id_match</li>
+<li>downshift_applied</li>
+<li>fallback_card_selected</li>
+</ul>
+<p>
+설계 의도가 “로직상 반드시 발생해야 하는 행동”을 검증한다.
+</p>
+</div>
+
+<div class="card">
+<div class="badge">LLM-as-Judge</div>
+<h3>의미 품질 검증</h3>
+<ul>
+<li>correctness_judge</li>
+<li>relevance_judge</li>
+<li>groundedness_judge</li>
+<li>retrieval_relevance_judge</li>
+</ul>
+<p>
+단순 카드 일치가 아니라,
+“설명/근거/맥락 적합성”까지 평가한다.
+</p>
+</div>
+
+</div>
+
+</div>
+
+<div class="section">
+<div class="section-title">3. Baseline Quality Gate</div>
+
+<div class="callout">
+평가는 보고서로 끝나지 않는다.<br>
+CI에서 baseline gate를 통과하지 못하면 PR은 실패한다.<br>
+이는 “기획 요구가 깨지는 코드 변경”을 자동 차단하기 위한 장치다.
+</div>
+
+<table class="table">
+<thead>
+<tr>
+<th>Metric</th>
+<th>Threshold</th>
+<th>의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>correctness_judge</td>
+<td>≥ 0.70</td>
+<td>답변 정확성 최소 기준</td>
+</tr>
+<tr>
+<td>groundedness_judge</td>
+<td>≥ 0.80</td>
+<td>근거 기반 설명 보장</td>
+</tr>
+<tr>
+<td>retrieval_relevance_judge</td>
+<td>≥ 0.85</td>
+<td>검색 품질 하한선</td>
+</tr>
+<tr>
+<td>safety_recall</td>
+<td><b>≥ 0.95</b></td>
+<td>안전 회수율 (최중요)</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+
+<div class="section">
+<div class="section-title">4. Offline ↔ LangSmith 이중 평가 전략</div>
+
+<div class="callout">
+API 키가 없거나 CI 환경에서는 <b>Offline Judge</b>로 fallback.<br>
+LangSmith 사용 시 실험 prefix 기반으로 실험을 분리.<br>
+→ 환경에 의존하지 않는 재현 가능한 평가.
+</div>
+
+<div class="grid">
+<div class="card">
+<h3>Local / CI</h3>
+<ul>
+<li>dataset schema 검증</li>
+<li>run_rag_eval.py 실행</li>
+<li>baseline gate 적용</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>LangSmith 실험</h3>
+<ul>
+<li>experiment_prefix 기반 비교</li>
+<li>baseline vs v2 리포트 생성</li>
+<li>PR 자동 코멘트</li>
+</ul>
+</div>
+</div>
+
+</div>
+
+<div class="section">
+<div class="section-title">5. 평가 설계의 수준</div>
+
+<div class="callout">
+이 평가 체계는 단순 정답 비교가 아니다.<br>
+<ul>
+<li>기획 가설 → 메트릭 → 코드 → CI 게이트 → 자동 리포트</li>
+<li>습관화/안전/품질을 각각 독립적으로 계측</li>
+<li>PR 단위로 품질 하락 자동 차단</li>
+</ul>
+즉, “잘 작동하는지”가 아니라 “설계 의도가 깨졌는지”를 감지한다.
+</div>
+
+</div>
+
+<div class="footer-note">
+BuddyFit Eval은 제품 전략(습관화 중심)과 기술 설계를 연결하는 계층이다.
+이는 단순 테스트가 아니라, 기획 가설의 지속적 검증 시스템이다.
+</div>
+
+</div>
+</body>
+</html>

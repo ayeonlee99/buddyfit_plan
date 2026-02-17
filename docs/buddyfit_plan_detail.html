@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>BuddyFit — 시장/타겟/페인포인트/시나리오 비교 & 해결 매핑</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Pretendard', -apple-system, 'Noto Sans KR', sans-serif; background:#f6f7fb; padding:28px; color:#141414; }
+  .page { max-width:1220px; margin:0 auto; background:#fff; border-radius:16px; padding:38px; box-shadow:0 10px 34px rgba(0,0,0,0.08); }
+  h1 { font-size:28px; font-weight:900; margin-bottom:8px; }
+  .subtitle { color:#666; font-size:14px; line-height:1.6; margin-bottom:22px; }
+
+  .section { margin-top:26px; }
+  .section-title { font-size:20px; font-weight:900; margin-bottom:12px; border-bottom:2px solid #e8e8e8; padding-bottom:6px; }
+
+  .pill-row { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 0; }
+  .pill { font-size:12px; background:#f2f2f2; border-radius:999px; padding:4px 10px; }
+  .pill b { color:#111; }
+
+  .callout { background:#fbfbfb; border:1px solid #eee; border-radius:12px; padding:14px 16px; margin-top:12px; line-height:1.75; font-size:13px; }
+  .callout strong { font-weight:900; }
+  .k { background:#fff3d4; padding:1px 6px; border-radius:4px; font-weight:900; }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-top:12px; }
+  .card { border:1px solid #eee; border-radius:14px; padding:14px 16px; background:#fff; }
+  .card h3 { font-size:16px; margin-bottom:8px; }
+  .card p, .card li { font-size:13px; line-height:1.7; color:#222; }
+  ul { padding-left:18px; margin-top:6px; }
+
+  .compare { display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:12px; }
+  .col { border:1px solid #eee; border-radius:14px; padding:14px 16px; background:#fff; }
+  .col h3 { font-size:16px; margin-bottom:8px; }
+  .tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; background:#f2f2f2; margin-right:6px; margin-bottom:6px; }
+
+  .flow { display:flex; flex-direction:column; gap:10px; margin-top:12px; }
+  .step { border:1px solid #eee; border-radius:14px; padding:14px 16px; background:#fff; position:relative; }
+  .step-head { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .num { width:28px; height:28px; border-radius:50%; background:#111; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:13px; flex:0 0 auto; }
+  .title { font-weight:900; font-size:15px; }
+  .req { margin-left:auto; font-size:11px; background:#f5f5f5; padding:2px 8px; border-radius:6px; color:#666; }
+  .body { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; font-size:13px; line-height:1.7; }
+  .box { border:1px solid #f0f0f0; border-radius:12px; padding:10px 12px; background:rgba(255,255,255,0.75); }
+  .lbl { font-size:11px; text-transform:uppercase; color:#777; font-weight:900; margin-bottom:4px; letter-spacing:0.4px; }
+
+  .bottleneck { border:2px dashed #c62828; background:#ffebee; }
+  .bottleneck .num { background:#c62828; }
+  .improve { border:2px solid #388e3c; background:#e8f5e9; }
+  .improve .num { background:#388e3c; }
+
+  .arrow { text-align:center; font-size:18px; color:#bbb; padding:4px 0; }
+
+  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:12px; }
+  th, td { border:1px solid #eee; padding:10px; vertical-align:top; }
+  th { background:#fafafa; font-size:12px; text-align:left; color:#555; }
+  td b { font-weight:900; }
+  code { background:#f1f3f5; padding:1px 5px; border-radius:4px; font-size:12px; }
+
+  .scoregrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:14px; margin-top:12px; }
+  .scorecard { border:1px solid #eee; border-radius:14px; padding:14px 16px; background:#fff; }
+  .scorecard h3 { font-size:15px; margin-bottom:6px; }
+  .meter { height:10px; background:#f0f0f0; border-radius:999px; overflow:hidden; margin-top:8px; }
+  .bar { height:100%; background:#111; width:78%; }
+  .note { color:#666; font-size:12px; line-height:1.6; margin-top:8px; }
+
+  .footer { margin-top:18px; font-size:12px; color:#666; line-height:1.65; }
+
+  /* ====== (보완) BuddyFit 시나리오 오른쪽 패널 전용: 빈 공간/세로문구 문제 해결 ====== */
+  .bf-panel {
+    border: 2px solid #2e7d32;
+    background: #e8f5e9;
+    border-radius: 16px;
+    padding: 14px 14px 16px;
+    margin-top: 10px;
+  }
+  .bf-panel-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .bf-panel-head .num {
+    background: #2e7d32;
+  }
+  .bf-panel-head .title {
+    font-size: 15px;
+  }
+  .bf-panel-head .req {
+    background: rgba(255,255,255,0.7);
+  }
+  .bf-summary {
+    font-size: 13px;
+    line-height: 1.7;
+    background: rgba(255,255,255,0.7);
+    border-radius: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(0,0,0,0.06);
+    margin-bottom: 10px;
+  }
+  .bf-summary b { font-weight: 900; }
+  .bf-steps { display:flex; flex-direction:column; gap:10px; }
+  .bf-step {
+    background: rgba(255,255,255,0.78);
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 14px;
+    padding: 12px 12px;
+  }
+  .bf-step-head { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .bf-step-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: #2e7d32;
+    color: #fff;
+    display:flex; align-items:center; justify-content:center;
+    font-weight: 900;
+    font-size: 12px;
+    flex: 0 0 auto;
+  }
+  .bf-step-title { font-weight:900; font-size:14px; }
+  .bf-step-tag {
+    margin-left:auto;
+    font-size:11px;
+    padding:2px 8px;
+    border-radius:999px;
+    background: rgba(46,125,50,0.10);
+    color:#1b5e20;
+    font-weight:800;
+  }
+  .bf-grid {
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+  .bf-box {
+    border-radius: 12px;
+    padding: 10px 10px;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid rgba(0,0,0,0.05);
+    font-size: 13px;
+    line-height: 1.65;
+  }
+  .bf-lbl {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: #4a4a4a;
+    font-weight: 900;
+    margin-bottom: 4px;
+  }
+  .bf-arrow { text-align:center; color: rgba(0,0,0,0.25); font-size: 18px; margin: 2px 0; }
+
+  @media (max-width: 980px) {
+    .compare { grid-template-columns: 1fr; }
+    .body { grid-template-columns: 1fr; }
+    .bf-grid { grid-template-columns: 1fr; }
+  }
+</style>
+  <link rel="stylesheet" href="site.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html">← Home</a>
+</nav>
+
+<div class="page">
+
+  <h1>시장/타겟/페인포인트 시나리오 비교 → BuddyFit 해결 매핑</h1>
+  <p class="subtitle">
+    기존 운동 앱 시장은 “운동 방법을 구체적으로 알려주는 것(루틴/동작 안내)”에 강점이 있지만,
+    <b>습관화(시작/지속)와 동기부여</b>는 대부분 사용자 개인의 의지에 의존하고 있음.
+    BuddyFit은 <b>LLM + Tool + Agent Workflow</b>로 이 ‘개인 의지에 의존했던 영역’을 기능으로 구현하여,
+    <b>습관화 병목을 먼저 해결</b>하고 그 다음 단계(강도 조절/루틴 개인화)로 사용자를 이동시키는 것을 목표로 함.
+  </p>
+
+  <!-- 1) 시장 관찰 -->
+  <div class="section">
+    <div class="section-title">1) 시장 관찰: 기존 운동 앱의 강점과 공백(Blind Spot)</div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>기존 앱의 강점(대표: 플랜핏류)</h3>
+        <ul>
+          <li><b>운동 방법(How-to)</b> 안내가 매우 구체적</li>
+          <li>루틴/동작 라이브러리, 프로그램 구조화</li>
+          <li>숙련자/이미 습관화된 유저에겐 “좋은 교재” 역할</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>기존 앱이 커버하지 못하는 유저 페인포인트</h3>
+        <ul>
+          <li>기존 앱은 운동 내역 트래킹 및 운동 상세 가이드 제시에만 집중되어 있을 뿐, <b> 습관화(동기부여/지속)단계는 전적으로 개인의 의지에만 의존</b></li>
+          <li>상황맥락(시간/장소/피곤/업무/공간/장비 제약)과 루틴이 불일치할 때 대안 제시가 약함</li>
+          <li>연속 실패가 누적되면 “나는 작심삼일” 낙인 → 재시작 자체가 어려워짐</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>BuddyFit이 보는 ‘진짜 병목’</h3>
+        <p>
+          운동 방법을 몰라서가 아니라, <span class="k">“지금 내 상황에서 할 수 있는가?”</span>에 대한 검토가 선행되어야 함<br>
+          따라서 BuddyFit은 운동에 대한 설명 제공보다 더 앞단의 선행 요건인 <b>지속성(완수 가능성)</b>과 <b>동기부여(연결/응원)</b>를 도와, 유저의 운동 습관화를 위한 가장 앞단의 병목을 완화하고자 함
+        </p>
+      </div>
+    </div>
+
+    <div class="pill-row">
+      <span class="pill"><b>시장 기본값:</b> How-to 중심</span>
+      <span class="pill"><b>시장 공백:</b> 습관화·동기부여 (의지 의존)</span>
+      <span class="pill"><b>BuddyFit 포지션:</b> “의지 의존 영역”을 기능으로 제공</span>
+    </div>
+  </div>
+
+  <!-- 2) 타겟 정의 -->
+  <div class="section">
+    <div class="section-title">2) 타겟 차이: 운동이 이미 습관화된 타겟에만 집중된 현 시장이 흡수하지 못한 ‘아직 습관화를 이루지 못한 운동 입문 희망자’</div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:25%">구분</th>
+          <th style="width:37%">기존 운동 앱이 주로 잘 맞는 유저</th>
+          <th style="width:38%">BuddyFit 타겟(우리가 흡수하려는 층)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>습관화 상태</b></td>
+          <td>이미 운동이 일상에 들어온 사람(루틴을 “수행”할 준비가 됨)</td>
+          <td><span class="k">아직 습관화되지 않음</span> / 시작할 의지는 있으나 실패 경험이 많음</td>
+        </tr>
+        <tr>
+          <td><b>시간/맥락</b></td>
+          <td>헬스장/정해진 시간 확보 가능</td>
+          <td>직장인/바쁜 사람: 일정 변동, 피곤, 공간·장비 제약이 큼</td>
+        </tr>
+        <tr>
+          <td><b>심리</b></td>
+          <td>성취/개선 목표가 뚜렷(“더 잘하고 싶다”)</td>
+          <td>반복 실패로 “나는 못 해” 낙인, 시작 자체를 회피(“또 실패할까봐”)</td>
+        </tr>
+        <tr>
+          <td><b>문제</b></td>
+          <td>운동의 질(루틴/강도/분할)을 최적화하고 싶음</td>
+          <td><span class="k">운동이 거창해야 한다</span>는 인식 때문에 첫 발을 못 뗌 → “지금 가능한 최소 행동”이 필요</td>
+        </tr>
+        <tr>
+          <td><b>시장 기회</b></td>
+          <td>이미 충분히 경쟁이 치열(How-to 강화 경쟁)</td>
+          <td><b>기존 시장이 ‘의지에 맡긴’ 구간</b>을 제품화해 신규 흡수(습관화 단계 시장)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <strong>핵심:</strong> 기존 시장은 “이미 습관화된 사람의 최적화”에 강하지만, BuddyFit은
+      <span class="k">“아직 습관화를 이루지 못한 운동 입문 희망자”</span>을 핵심 타겟으로 삼아,
+      기존 앱이 해결하지 못한 병목(지속 실패)을 먼저 해결해 다음 단계(강도/루틴 개인화)로 이동시키는 전략을 취하고자함
+    </div>
+  </div>
+
+  <!-- 3) 시나리오 비교 (병목) -->
+  <div class="section">
+    <div class="section-title">3) 시나리오 비교: 기존 유저 페인포인트(병목) vs BuddyFit 개선 시나리오</div>
+
+    <div class="compare">
+      <!-- LEFT: 기존 운동 앱 시나리오 -->
+      <div class="col">
+        <h3>기존 운동 앱 시나리오 (입문자/바쁜 직장인 기준)</h3>
+        <span class="tag">How-to 제공</span><span class="tag">의지 의존</span><span class="tag">맥락 불일치</span>
+
+        <div class="flow">
+          <div class="step">
+            <div class="step-head"><div class="num">1</div><div class="title">운동을 해야겠다는 의지 발생</div><div class="req">Start</div></div>
+            <div class="body">
+              <div class="box"><div class="lbl">상황</div>바쁜 일정 / 피곤 / 공간·장비 제약</div>
+              <div class="box"><div class="lbl">앱 제공</div>루틴/동작 “방법”은 제공</div>
+              <div class="box"><div class="lbl">문제</div>지금 내 상황에서 가능한지 검증·대안이 약함</div>
+            </div>
+          </div>
+
+          <div class="arrow">▼</div>
+
+          <div class="step bottleneck">
+            <div class="step-head"><div class="num">2</div><div class="title">계획은 세웠지만 실행 실패</div><div class="req">Bottleneck</div></div>
+            <div class="body">
+              <div class="box"><div class="lbl">원인</div>시간/장소/피로와 루틴 불일치</div>
+              <div class="box"><div class="lbl">결과</div>“오늘은 패스”가 반복 → miss streak</div>
+              <div class="box"><div class="lbl">후폭풍</div>실패 누적 낙인: “나는 작심삼일”</div>
+            </div>
+          </div>
+
+          <div class="arrow">▼</div>
+
+          <div class="step bottleneck">
+            <div class="step-head"><div class="num">3</div><div class="title">재시도 회피(시작 자체가 부담)</div><div class="req">Drop</div></div>
+            <div class="body">
+              <div class="box"><div class="lbl">심리</div>“운동은 거창해야 해” “헬스장 가야 해”</div>
+              <div class="box"><div class="lbl">행동</div>앱 열기/루틴 실행 자체가 멈춤</div>
+              <div class="box"><div class="lbl">결국</div>강도 최적화/개인화 단계에 도달 불가</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: BuddyFit 개선 시나리오 (보완된 시각화) -->
+      <div class="col">
+        <h3>BuddyFit 시나리오 (병목 개선 중심)</h3>
+        <span class="tag">LLM+Tool</span><span class="tag">맥락 적합</span><span class="tag">끊김 방지</span><span class="tag">버디 동기</span>
+
+        <div class="bf-panel">
+          <div class="bf-panel-head">
+            <div class="num">1</div>
+            <div class="title">“의지 의존 영역”을 기능으로 대체하는 루프</div>
+            <div class="req">Context → Sustain → No Drop</div>
+          </div>
+
+          <div class="bf-summary">
+            BuddyFit의 핵심은 <b>“지금 가능한 행동만 추천”</b>하는 것이다.
+            컨텍스트를 구조화해(LLM+Tool), <b>완수가능 미션</b>을 만들고,
+            실패 신호가 나오면 <b>즉시 개입</b>해 습관화 루프를 끊기지 않게 한다.
+          </div>
+
+          <div class="bf-steps">
+
+            <div class="bf-step">
+              <div class="bf-step-head">
+                <div class="bf-step-num">1</div>
+                <div class="bf-step-title">상황맥락 입력 → 상태 동기화</div>
+                <div class="bf-step-tag">Context</div>
+              </div>
+              <div class="bf-grid">
+                <div class="bf-box">
+                  <div class="bf-lbl">입력</div>
+                  place / time / condition / equipment / space / free_text
+                </div>
+                <div class="bf-box">
+                  <div class="bf-lbl">워크플로우</div>
+                  <b>ContextCollector</b>로 상태 동기화(SSOT)
+                </div>
+                <div class="bf-box">
+                  <div class="bf-lbl">기획 의도</div>
+                  “지금 가능한지” 판단 근거를 먼저 고정
+                </div>
+              </div>
+            </div>
+
+            <div class="bf-arrow">▼</div>
+
+            <div class="bf-step">
+              <div class="bf-step-head">
+                <div class="bf-step-num">2</div>
+                <div class="bf-step-title">완수 가능성 우선 미션 생성</div>
+                <div class="bf-step-tag">Sustain</div>
+              </div>
+              <div class="bf-grid">
+                <div class="bf-box">
+                  <div class="bf-lbl">지속성</div>
+                  피곤/연속미수행이면 <b>2분·초저강도 다운시프트</b>로 진입장벽 최소화
+                </div>
+                <div class="bf-box">
+                  <div class="bf-lbl">실행가능성</div>
+                  하드필터(시간/장소/장비/강도)로 “불가능 미션” 제거
+                </div>
+                <div class="bf-box">
+                  <div class="bf-lbl">안전</div>
+                  부상/회피 동작 Safety Gate 차단 + 대체안/폴백
+                </div>
+              </div>
+            </div>
+
+            <div class="bf-arrow">▼</div>
+
+            <div class="bf-step">
+              <div class="bf-step-head">
+                <div class="bf-step-num">3</div>
+                <div class="bf-step-title">끊김 방지(개입) + 동기부여(버디 응원)</div>
+                <div class="bf-step-tag">No Drop</div>
+              </div>
+              <div class="bf-grid">
+                <div class="bf-box">
+                  <div class="bf-lbl">Monitor</div>
+                  늦은 시간 미완료/연속 스킵 감지 → 즉시 개입 분기
+                </div>
+                <div class="bf-box">
+                  <div class="bf-lbl">Intervention</div>
+                  <b>2분 대체 미션</b>으로 성공 확률 극대화 → “오늘도 해냈다” 경험 누적
+                </div>
+                <div class="bf-box">
+                  <div class="bf-lbl">BuddySync</div>
+                  완료 여부 + <b>응원 메시지</b> 전달로 사회적 동기 강화(재참여 유도)
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="callout" style="margin-top:12px;">
+          <strong>핵심 차이:</strong> 기존 앱이 “운동 방법”을 제공할 때, BuddyFit은
+          <span class="k">습관화 병목(지속성/동기)</span>을 먼저 해결하도록 워크플로우를 설계한다.
+          즉, “운동 강도/루틴 최적화”는 <b>습관화가 된 이후</b>에야 의미가 생긴다.
+        </div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>병목 개선의 핵심 논리:</strong><br>
+      기존 서비스는 “운동 강도/방법”은 제공하지만, 입문자에게 가장 중요한 <span class="k">습관화(지속성/동기)</span>는 개인 의지에 맡겨져 있어 이탈이 발생합니다.
+      BuddyFit은 <b>상황맥락 기반 ‘완수 가능한 미션’만 제공</b>하고, 실패 신호에 즉시 개입하며, 버디 응원으로 동기부여를 강화해
+      <b>습관화 병목을 먼저 통과시키는</b> 구조입니다.
+    </div>
+  </div>
+
+  <!-- 4) 왜 LLM이어야 하는가 -->
+  <div class="section">
+    <div class="section-title">4) “지속성 해결에 왜 LLM이어야 하는가?”</div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>문제의 본질: 입력 공간이 너무 다양함</h3>
+        <ul>
+          <li>시간(2분~30분), 장소(집/회사/헬스장), 컨디션(피곤/보통/좋음)</li>
+          <li>장비/공간/소음 제약</li>
+          <li>프리텍스트(“오늘 너무 바빠”, “허리 뻐근해”, “회의가 길어졌어”)</li>
+        </ul>
+        <p class="note">→ 이 조합은 규칙만으로 커버하기 어렵고, 룰이 늘어날수록 유지보수 비용이 폭증함.</p>
+      </div>
+
+      <div class="card">
+        <h3>LLM의 역할: “상황 해석 + 의도 추론”</h3>
+        <ul>
+          <li>프리텍스트를 구조화된 컨텍스트로 변환(의도/제약/감정)</li>
+          <li>오늘의 실행 가능성에 영향을 주는 숨은 제약 추출</li>
+          <li>단, <b>LLM 단독 생성</b>은 위험 → Tool/RAG/가드레일로 경계 설정</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Tool/Workflow의 역할: “책임 있는 실행”</h3>
+        <ul>
+          <li>RAG 카드 기반으로 추천 공간을 제한(검증된 행동만)</li>
+          <li>하드필터/안전게이트로 물리·안전 제약 강제</li>
+          <li>이벤트로그/Eval로 가설을 측정·개선</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>결론:</strong> “지속성”은 단순 루틴 추천이 아니라 <span class="k">상황맥락 해석(LLM)</span>과 <span class="k">검증 가능한 실행(툴/워크플로우)</span>이 결합되어야 해결됩니다.
+    </div>
+  </div>
+
+  <!-- 5) 해결 매핑 -->
+  <div class="section">
+    <div class="section-title">5) 해결 매핑: Pain Point → 요구사항 → 설계(워크플로우) → 기대 효과</div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:28%">Pain Point (시나리오 기반)</th>
+          <th style="width:20%">기획 요구사항</th>
+          <th style="width:30%">설계 매핑(어디서/무엇으로)</th>
+          <th style="width:22%">기대 효과(측정)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>상황과 미션 불일치</b>로 실행 실패</td>
+          <td>실행 가능성 보장</td>
+          <td>ContextCollector + Planner 하드필터(시간/장소/장비/강도)</td>
+          <td>미션 스킵율↓ / 완료율↑</td>
+        </tr>
+        <tr>
+          <td><b>연속 실패 → 낙인</b>으로 재시도 회피</td>
+          <td>습관화 루프 유지</td>
+          <td>Monitor(실패 감지) + Intervention(2분 초저강도 대체)</td>
+          <td>miss streak↓ / 재참여↑</td>
+        </tr>
+        <tr>
+          <td>운동이 “거창해야 한다”는 인식</td>
+          <td>진입장벽 최소화</td>
+          <td>Planner Downshift(2분/강도1) + Fallback(빈 결과 방지)</td>
+          <td>첫 7일 유지율↑</td>
+        </tr>
+        <tr>
+          <td>동기부여가 개인 의지에 의존</td>
+          <td>사회적 동기 제공</td>
+          <td>BuddySync: 완료 여부 + 응원 메시지 전달</td>
+          <td>재참여(48h)↑ / 루프 유지↑</td>
+        </tr>
+        <tr>
+          <td>프리텍스트로 통증/부상 언급 → 의학 조언 리스크</td>
+          <td>책임범위/신뢰 보호</td>
+          <td>Output Guardrail: 의학 조언 차단 + 전문가 상담 유도</td>
+          <td>가드레일 트리거 분석 / CS 리스크↓</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 6) 동기부여 강화 -->
+  <div class="section">
+    <div class="section-title">6) 동기부여 설계 보강 & 향후 강화(개인화)</div>
+
+    <div class="scoregrid">
+      <div class="scorecard">
+        <h3>현재 동기부여 핵심(버디 연결)</h3>
+        <p>완료 시 버디에게 완료 여부 + 응원 메시지로 사회적 동기 제공</p>
+        <div class="meter"><div class="bar" style="width:72%"></div></div>
+        <div class="note">
+          “개인의지”를 “연결/응원”으로 대체. 습관화 단계에서 가장 즉각적인 효과 기대.
+        </div>
+      </div>
+
+      <div class="scorecard">
+        <h3>향후 보강: 개인화된 동기부여</h3>
+        <p>롱텀메모리(선호/실패원인/성공경험) 기반 맞춤 응원/미션 추천</p>
+        <div class="meter"><div class="bar" style="width:84%"></div></div>
+        <div class="note">
+          “이 사람에게 통하는 동기”를 학습해 톤/타이밍/미션 전략을 정교화 가능.
+        </div>
+      </div>
+
+      <div class="scorecard">
+        <h3>장기 비전: 습관화 → 최적화 단계 전환</h3>
+        <p>습관화 지표가 일정 수준 이상이면 강도/루틴 개인화 단계로 확장</p>
+        <div class="meter"><div class="bar" style="width:78%"></div></div>
+        <div class="note">
+          “습관화가 되면 그때 최적화가 의미가 생김” → 제품 계단 구조 완성.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7) 논리적 정합성 체크 -->
+  <div class="section">
+    <div class="section-title">7) 기획 논리 정합성 체크: ‘페인포인트–타겟–해결’ 매핑이 잘 되었는가?</div>
+
+    <div class="callout">
+      <strong>우리가 주장하는 논리의 체인:</strong><br>
+      (1) 시장은 How-to 중심 → (2) 입문자 병목은 습관화/동기부여 → (3) 타겟은 “의지 있지만 습관화 실패” →
+      (4) 지속성은 상황맥락 기반 완수가능 미션 + 끊김 방지 개입으로 해결 → (5) 동기부여는 버디 응원으로 해결 →
+      (6) 이를 LLM+Tool Workflow가 책임 있게 구현한다.
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30%">검증 질문</th>
+          <th style="width:35%">우리가 설계에서 한 답</th>
+          <th style="width:35%">데이터로 어떻게 증명?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>정말 습관화가 병목인가?</td>
+          <td>Downshift/Intervention/Fallback을 핵심 설계로 둠</td>
+          <td>첫 7일 유지율, miss streak 변화, intervention 전후 완료율</td>
+        </tr>
+        <tr>
+          <td>완수 가능한 미션을 “정말” 제공하나?</td>
+          <td>하드필터 + Reflector 재계획 + 초저강도 대체</td>
+          <td>스킵 사유, time/condition mismatch 감소, fallback 비율</td>
+        </tr>
+        <tr>
+          <td>버디 동기부여가 실제 효과가 있나?</td>
+          <td>완료 여부 + 응원 메시지 전달(사회적 동기)</td>
+          <td>버디 노출 후 48h 재참여율/완료율 변화</td>
+        </tr>
+        <tr>
+          <td>LLM이 꼭 필요했나?</td>
+          <td>프리텍스트/맥락 다양성 해석 + 규칙 비용 절감</td>
+          <td>프리텍스트가 있는 케이스에서 추천/완료율 차이</td>
+        </tr>
+        <tr>
+          <td>서비스 리스크(의학 조언 등)는 관리되나?</td>
+          <td>Output Guardrail로 책임범위 제한</td>
+          <td>guardrail_triggered 로그, 위험 표현 누락률(safety recall)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      ※ “시장/타겟/병목/해결”을
+      <b>요구사항 → 설계 → 데이터/평가</b>로 설계.
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
