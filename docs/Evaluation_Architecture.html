@@ -187,9 +187,24 @@ CI에서 baseline gate를 통과하지 못하면 PR은 실패한다.<br>
 </thead>
 <tbody>
 <tr>
+<td>card_id_match</td>
+<td>≥ 0.20</td>
+<td>예상 카드 ID 일치율</td>
+</tr>
+<tr>
+<td>downshift_applied</td>
+<td>≥ 0.90</td>
+<td>다운시프트 적용 정확도</td>
+</tr>
+<tr>
 <td>correctness_judge</td>
 <td>≥ 0.70</td>
 <td>답변 정확성 최소 기준</td>
+</tr>
+<tr>
+<td>relevance_judge</td>
+<td>≥ 0.75</td>
+<td>답변 맥락 적합성</td>
 </tr>
 <tr>
 <td>groundedness_judge</td>

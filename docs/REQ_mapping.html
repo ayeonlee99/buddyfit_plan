@@ -114,7 +114,7 @@
         <tr>
           <td><b>REQ-3 개인화</b></td>
           <td>사용자의 과거 패턴/선호/실패 이유를 다음 추천에 반영한다</td>
-          <td><b>Planner Long Memory 조회</b> + PostAction upsert_long_memory + 리랭킹 반영</td>
+          <td><b>Planner Long Memory 조회</b> + PostAction upsert_long_memory + 쿼리 생성에 반영</td>
         </tr>
         <tr>
           <td><b>REQ-4 안전(부상 회피)</b></td>
@@ -193,7 +193,7 @@
         <div class="col">
           <div class="col-label">핵심 설계(무엇을 보장?)</div>
           <span class="highlight">지속성</span>: 다운시프트(2분) + 폴백(빈 결과 방지)<br>
-          <span class="highlight">개인화</span>: Long Memory 힌트 → 검색/리랭킹 반영<br>
+          <span class="highlight">개인화</span>: Long Memory 힌트 → 쿼리 생성에 반영<br>
           <span class="highlight">안전</span>: 부상/회피 동작 충돌 사전 차단 + 대체 카드
         </div>
         <div class="col">
@@ -299,7 +299,7 @@
           <div class="col-label">입력(끊김 원인 단서)</div>
           today_context + free_text<br>
           history_7d (miss/skip)<br>
-          long_memory(failure_reason/회고)
+          long_memory(failure_reason)
         </div>
         <div class="col">
           <div class="col-label">행동(무엇을 바꾸나)</div>
@@ -337,7 +337,7 @@
         <div class="col">
           <div class="col-label">입력</div>
           system_message (LLM/템플릿 산출)<br>
-          free_text(통증/부상 언급 가능)
+          latest_mission (미션 정보)
         </div>
         <div class="col">
           <div class="col-label">가드레일 동작</div>
@@ -348,7 +348,7 @@
         <div class="col">
           <div class="col-label">출력</div>
           사용자 노출 메시지(책임범위 내)<br>
-          <span class="tool-badge">append_event_log</span>(GUARDRAIL_TRIGGERED)
+          <span class="tool-badge">append_event_log</span>(OUTPUT_DELIVERED, GUARDRAIL_TRIGGERED)
         </div>
       </div>
     </div>
@@ -377,7 +377,7 @@
         <div class="col">
           <div class="col-label">저장(학습)</div>
           <span class="tool-badge">update_user_state</span>(short memory)<br>
-          <span class="tool-badge">upsert_long_memory</span>(preference/failure_reason)
+          <span class="tool-badge">upsert_long_memory</span>(reflection/failure_reason/preference)
         </div>
         <div class="col">
           <div class="col-label">분기</div>
